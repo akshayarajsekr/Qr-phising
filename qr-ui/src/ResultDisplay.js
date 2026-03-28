@@ -32,28 +32,77 @@ const ResultDisplay = ({ result, loading }) => {
         <div className="idle-content">
           <div className="idle-icon" />
           <h3>No QR Code Scanned Yet</h3>
-          <p>Start the scanner and point your camera at a QR code to analyze it for phishing threats.</p>
+          <p>Start the scanner or upload an image to analyze it for phishing and payment fraud.</p>
         </div>
       </div>
     );
   }
 
-  const isPhishing = result.prediction?.includes("Phishing");
+  const isPhishing = result.prediction?.includes("Phishing") || result.prediction?.includes("Fraudulent");
+  const isSuspicious = result.prediction?.includes("Suspicious") || result.prediction?.includes("concerns");
   const isError = result.type === "ERROR";
-  const verdictClass = isPhishing ? "danger" : isError ? "error" : "safe";
+
+  const verdictClass = isPhishing ? "danger" : isSuspicious ? "warning" : isError ? "error" : "safe";
+  const verdictLabel = isPhishing ? "Threat Detected"
+    : isSuspicious ? "Caution"
+    : isError ? "Error"
+    : "No Threat Detected";
+
   const cleanPrediction = stripNonAscii(result.prediction);
+  const isUPI = result.type === "UPI";
+  const isURL = result.type === "URL";
 
   return (
     <div className="result-card">
       <div className={`verdict-area ${verdictClass}`}>
-        <div className="verdict-label">
-          {isPhishing ? "Threat Detected" : isError ? "Error" : "No Threat Detected"}
-        </div>
+        <div className="verdict-label">{verdictLabel}</div>
         <div className="verdict-text">{cleanPrediction}</div>
-        <div className="verdict-type">QR Type: {result.type}</div>
+        <div className="verdict-type">
+          QR Type: {result.type}
+          {result.risk_level && (
+            <span className={`risk-badge ${verdictClass}`}>{result.risk_level}</span>
+          )}
+        </div>
       </div>
 
-      {(result.domain || result.protocol || result.redirects != null) && (
+      {/* Flags / Warnings */}
+      {result.flags && result.flags.length > 0 && (
+        <div className="details-section">
+          <div className="section-label">Risk Indicators</div>
+          <ul className="flags-list">
+            {result.flags.map((flag, i) => (
+              <li key={i} className={`flag-item ${isPhishing ? "flag-danger" : "flag-warning"}`}>
+                {flag}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* UPI Payment Details */}
+      {isUPI && (
+        <div className="details-section">
+          <div className="section-label">Payment Details</div>
+          <div className="info-grid">
+            <Row label="UPI ID"    value={result.upi_id} />
+            <Row label="Payee"     value={result.payee_name} />
+            <Row label="Amount"    value={result.amount ? `Rs. ${result.amount}` : null} />
+            <Row label="Remarks"   value={result.remarks} />
+          </div>
+          {isPhishing || isSuspicious ? (
+            <div className="payment-warning">
+              Do not proceed with this payment. This QR code shows signs of fraud.
+            </div>
+          ) : (
+            <div className="payment-safe">
+              Always verify the payee name and UPI ID before confirming payment.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* URL Analysis */}
+      {isURL && (result.domain || result.protocol) && (
         <div className="details-section">
           <div className="section-label">URL Analysis</div>
           <div className="info-grid">
@@ -66,6 +115,7 @@ const ResultDisplay = ({ result, loading }) => {
         </div>
       )}
 
+      {/* Raw Data */}
       <div className="details-section">
         <div className="section-label">Raw QR Data</div>
         <div className="raw-data">

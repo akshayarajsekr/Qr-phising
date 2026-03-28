@@ -323,11 +323,7 @@ body {
 .verdict-area.error    .verdict-text { color: #78350f; }
 .verdict-area.analyzing .verdict-text { color: #1e3a8a; }
 
-.verdict-type {
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: #64748b;
-}
+
 
 /* Loading bar */
 .loading-bar {
@@ -613,6 +609,81 @@ body {
   border: 1px solid #fecaca;
   border-radius: 8px;
   color: #dc2626;
+  font-size: 0.83rem;
+  font-weight: 500;
+}
+
+/* ── Risk badge ── */
+.verdict-type {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.risk-badge {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.risk-badge.safe    { background: #dcfce7; color: #15803d; }
+.risk-badge.danger  { background: #fee2e2; color: #b91c1c; }
+.risk-badge.warning { background: #fef9c3; color: #854d0e; }
+.risk-badge.error   { background: #fef3c7; color: #b45309; }
+
+/* ── Warning verdict ── */
+.verdict-area.warning {
+  background: linear-gradient(135deg, #fefce8, #fef9c3);
+}
+
+.verdict-area.warning .verdict-label { color: #854d0e; }
+.verdict-area.warning .verdict-text  { color: #713f12; }
+
+/* ── Flags list ── */
+.flags-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.flag-item {
+  padding: 9px 14px;
+  border-radius: 8px;
+  font-size: 0.83rem;
+  font-weight: 500;
+  border-left: 3px solid;
+}
+
+.flag-danger  { background: #fef2f2; color: #b91c1c; border-color: #dc2626; }
+.flag-warning { background: #fffbeb; color: #92400e; border-color: #f59e0b; }
+
+/* ── Payment messages ── */
+.payment-warning {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #b91c1c;
+  font-size: 0.83rem;
+  font-weight: 600;
+}
+
+.payment-safe {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  color: #15803d;
   font-size: 0.83rem;
   font-weight: 500;
 }
