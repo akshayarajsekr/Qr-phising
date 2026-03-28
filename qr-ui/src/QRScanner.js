@@ -18,7 +18,21 @@ const QRScanner = ({ setResult, setLoading }) => {
     setLoading(true);
     axios
       .post(`${process.env.REACT_APP_API_URL}/predict`, { qr_data: data })
-      .then((res) => setResult(res.data))
+      .then((res) => {
+        setResult(res.data);
+        // fetch domain age separately without blocking
+        if (res.data.type === "URL" && res.data.domain) {
+          axios
+            .post(`${process.env.REACT_APP_API_URL}/domain-age`, { domain: res.data.domain })
+            .then((ageRes) => {
+              setResult((prev) => ({
+                ...prev,
+                domain_age_days: ageRes.data.domain_age_days,
+              }));
+            })
+            .catch(() => {});
+        }
+      })
       .catch(() =>
         setResult({ data: data, type: "ERROR", prediction: "Backend unreachable" })
       )

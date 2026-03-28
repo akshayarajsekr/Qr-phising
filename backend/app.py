@@ -27,28 +27,32 @@ def detect_qr_type(data):
         return "TEXT"
 
 
-def calculate_confidence(flags, is_phishing, redirects, has_https, domain_age_days):
+def calculate_confidence(flags, is_phishing, redirects, has_https):
     score = 0
-    total = 100
-
     if is_phishing:
         score += 50
     if not has_https:
         score += 15
     if redirects and redirects > 2:
         score += 15
-    if domain_age_days is not None and domain_age_days < 30:
-        score += 20
-    elif domain_age_days is not None and domain_age_days < 180:
-        score += 10
     score += min(len(flags) * 5, 20)
-
-    return min(score, total)
+    return min(score, 95)
 
 
 @app.route("/", methods=["GET"])
 def health():
-    return jsonify({"status": "ok", "message": "QR Phishing Detector API is running"})
+    return jsonify({"status": "ok", "message": "QRSafe API is running"})
+
+
+# ── Fast domain age endpoint called separately by frontend ──
+@app.route("/domain-age", methods=["POST"])
+def domain_age():
+    body = request.get_json()
+    domain = body.get("domain", "").strip()
+    if not domain:
+        return jsonify({"domain_age_days": None, "age_risk": None})
+    age_days, age_risk = check_domain_age(domain)
+    return jsonify({"domain_age_days": age_days, "age_risk": age_risk})
 
 
 @app.route("/predict", methods=["POST"])
@@ -80,13 +84,12 @@ def predict():
         confidence = min(len(r["flags"]) * 25, 95) if r["flags"] else 5
         response.update({
             "prediction": r["prediction"], "risk_level": r["risk_level"],
-            "confidence": confidence,
-            "flags": r["flags"], "upi_id": r["upi_id"],
-            "payee_name": r["payee_name"], "amount": r["amount"],
-            "remarks": r["remarks"],
+            "confidence": confidence, "flags": r["flags"],
+            "upi_id": r["upi_id"], "payee_name": r["payee_name"],
+            "amount": r["amount"], "remarks": r["remarks"],
         })
 
-    # ── URL ──
+    # ── URL — redirect + ML in parallel, NO domain age here ──
     elif qr_type == "URL":
         processed = preprocess_url(data)
         domain = None
@@ -96,18 +99,14 @@ def predict():
             response["path"] = processed.get("path") or "/"
             domain = processed.get("domain", "").split(":")[0]
 
-        with ThreadPoolExecutor(max_workers=3) as pool:
+        with ThreadPoolExecutor(max_workers=2) as pool:
             redirect_future = pool.submit(check_redirect, data)
             ml_future = pool.submit(predict_url, data)
-            age_future = pool.submit(check_domain_age, domain) if domain else None
-
             final_url, redirects = redirect_future.result()
             ml_prediction = ml_future.result()
-            domain_age_days, age_risk = age_future.result() if age_future else (None, None)
 
         response["final_url"] = final_url
         response["redirects"] = redirects
-        response["domain_age_days"] = domain_age_days
 
         is_phishing = "Phishing" in ml_prediction
         has_https = "https://" in final_url
@@ -124,25 +123,11 @@ def predict():
             flags.append("Payment-related phishing URL — do not enter card or UPI details")
         if not has_https:
             flags.append("Insecure connection — no HTTPS")
-        if domain_age_days is not None and domain_age_days < 30:
-            flags.append(f"Newly registered domain — only {domain_age_days} days old")
-        elif domain_age_days is not None and domain_age_days < 180:
-            flags.append(f"Relatively new domain — {domain_age_days} days old")
 
-        confidence = calculate_confidence(flags, is_phishing, redirects, has_https, domain_age_days)
-
-        if is_phishing and (not has_https or (domain_age_days and domain_age_days < 30)):
-            risk_level = "High Risk"
-        elif is_phishing:
-            risk_level = "High Risk"
-        elif flags:
-            risk_level = "Medium Risk"
-        else:
-            risk_level = "Safe"
-
+        confidence = calculate_confidence(flags, is_phishing, redirects, has_https)
         response["flags"] = flags
         response["prediction"] = ml_prediction
-        response["risk_level"] = risk_level
+        response["risk_level"] = "High Risk" if is_phishing else ("Medium Risk" if flags else "Safe")
         response["confidence"] = confidence
 
     # ── WIFI ──
@@ -151,8 +136,8 @@ def predict():
         confidence = min(len(r["flags"]) * 25, 95) if r["flags"] else 5
         response.update({
             "prediction": r["prediction"], "risk_level": r["risk_level"],
-            "confidence": confidence,
-            "flags": r["flags"], "ssid": r["ssid"], "security": r["security"],
+            "confidence": confidence, "flags": r["flags"],
+            "ssid": r["ssid"], "security": r["security"],
         })
 
     # ── EMAIL ──
@@ -161,8 +146,8 @@ def predict():
         confidence = min(len(r["flags"]) * 25, 95) if r["flags"] else 5
         response.update({
             "prediction": r["prediction"], "risk_level": r["risk_level"],
-            "confidence": confidence,
-            "flags": r["flags"], "email_to": r["to"], "email_subject": r["subject"],
+            "confidence": confidence, "flags": r["flags"],
+            "email_to": r["to"], "email_subject": r["subject"],
         })
 
     # ── TEXT ──
@@ -171,9 +156,8 @@ def predict():
         confidence = min(len(r["flags"]) * 25, 95) if r["flags"] else 5
         response.update({
             "prediction": r["prediction"], "risk_level": r["risk_level"],
-            "confidence": confidence,
-            "flags": r["flags"], "contains_url": r["contains_url"],
-            "embedded_url": r["embedded_url"],
+            "confidence": confidence, "flags": r["flags"],
+            "contains_url": r["contains_url"], "embedded_url": r["embedded_url"],
         })
 
     return jsonify(response)
