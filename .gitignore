@@ -6,4 +6,3 @@ node_modules/
 qr-ui/node_modules/
 qr-ui/build/
 dataset.csv
-app.py
