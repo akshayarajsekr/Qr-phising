@@ -54,7 +54,7 @@ function App() {
         <div className="header-brand">
           <div className="header-logo">QR</div>
           <div>
-            <h1>QR Code Phishing Detector</h1>
+            <h1>QRSafe</h1>
             <p>Real-time AI-powered threat analysis</p>
           </div>
         </div>

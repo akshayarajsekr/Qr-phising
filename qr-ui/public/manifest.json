@@ -1,6 +1,6 @@
 {
-  "short_name": "QR Detector",
-  "name": "QR Code Phishing Detector",
+  "short_name": "QRSafe",
+  "name": "QRSafe - QR Code Phishing Detector",
   "description": "AI-powered QR code threat analysis",
   "icons": [
     { "src": "favicon.ico", "sizes": "64x64 32x32 24x24 16x16", "type": "image/x-icon" },
