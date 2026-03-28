@@ -3,6 +3,11 @@ import QRScanner from "./QRScanner";
 import ResultDisplay from "./ResultDisplay";
 import "./App.css";
 
+function stripNonAscii(str) {
+  if (!str) return str;
+  return str.split("").filter((c) => c.charCodeAt(0) < 128).join("").trim();
+}
+
 function App() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -44,7 +49,7 @@ function App() {
                 {history.map((item, i) => (
                   <li key={i} className={item.prediction?.includes("Phishing") ? "danger" : "safe"}>
                     <span className="history-type">{item.type}</span>
-                    <span className="history-pred">{item.prediction?.replace(/[^\x00-\x7F]/g, "").trim()}</span>
+                    <span className="history-pred">{stripNonAscii(item.prediction)}</span>
                     <span className="history-data">{item.data}</span>
                   </li>
                 ))}

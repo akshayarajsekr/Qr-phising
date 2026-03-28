@@ -1,5 +1,10 @@
 import React from "react";
 
+function stripNonAscii(str) {
+  if (!str) return str;
+  return str.split("").filter((c) => c.charCodeAt(0) < 128).join("").trim();
+}
+
 const Row = ({ label, value }) =>
   value ? (
     <div className="info-row">
@@ -36,7 +41,7 @@ const ResultDisplay = ({ result, loading }) => {
   const isPhishing = result.prediction?.includes("Phishing");
   const isError = result.type === "ERROR";
   const verdictClass = isPhishing ? "danger" : isError ? "error" : "safe";
-  const cleanPrediction = result.prediction?.replace(/[^\x00-\x7F]/g, "").trim();
+  const cleanPrediction = stripNonAscii(result.prediction);
 
   return (
     <div className="result-card">
