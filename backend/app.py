@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from url_preprocessing import preprocess_url
 from predict_url import predict_url
 from redirect_detector import check_redirect
@@ -10,6 +11,8 @@ from text_analyzer import analyze_text
 
 app = Flask(__name__)
 CORS(app)
+
+executor = ThreadPoolExecutor(max_workers=4)
 
 
 def detect_qr_type(data):
@@ -41,47 +44,27 @@ def predict():
     qr_type = detect_qr_type(data)
 
     response = {
-        "data": data,
-        "type": qr_type,
-        "prediction": None,
-        "risk_level": None,
-        "flags": [],
-        # URL fields
-        "protocol": None,
-        "domain": None,
-        "path": None,
-        "redirects": None,
-        "final_url": None,
-        # UPI fields
-        "upi_id": None,
-        "payee_name": None,
-        "amount": None,
-        "remarks": None,
-        # WIFI fields
-        "ssid": None,
-        "security": None,
-        # EMAIL fields
-        "email_to": None,
-        "email_subject": None,
-        # TEXT fields
-        "contains_url": False,
-        "embedded_url": None,
+        "data": data, "type": qr_type,
+        "prediction": None, "risk_level": None, "flags": [],
+        "protocol": None, "domain": None, "path": None,
+        "redirects": None, "final_url": None,
+        "upi_id": None, "payee_name": None, "amount": None, "remarks": None,
+        "ssid": None, "security": None,
+        "email_to": None, "email_subject": None,
+        "contains_url": False, "embedded_url": None,
     }
 
     # ── UPI ──
     if qr_type == "UPI":
         r = analyze_upi(data)
         response.update({
-            "prediction": r["prediction"],
-            "risk_level": r["risk_level"],
-            "flags": r["flags"],
-            "upi_id": r["upi_id"],
-            "payee_name": r["payee_name"],
-            "amount": r["amount"],
+            "prediction": r["prediction"], "risk_level": r["risk_level"],
+            "flags": r["flags"], "upi_id": r["upi_id"],
+            "payee_name": r["payee_name"], "amount": r["amount"],
             "remarks": r["remarks"],
         })
 
-    # ── URL ──
+    # ── URL — run redirect + ML in parallel ──
     elif qr_type == "URL":
         processed = preprocess_url(data)
         if processed:
@@ -89,13 +72,18 @@ def predict():
             response["domain"] = processed.get("domain")
             response["path"] = processed.get("path") or "/"
 
-        final_url, redirects = check_redirect(data)
+        # Run redirect check and ML prediction simultaneously
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            redirect_future = pool.submit(check_redirect, data)
+            ml_future = pool.submit(predict_url, data)
+
+            final_url, redirects = redirect_future.result()
+            ml_prediction = ml_future.result()
+
         response["final_url"] = final_url
         response["redirects"] = redirects
 
-        ml_prediction = predict_url(final_url)
         is_phishing = "Phishing" in ml_prediction
-
         payment_keywords = ["pay", "upi", "gpay", "phonepe", "paytm",
                             "payment", "transaction", "wallet", "bank", "transfer"]
         is_payment_url = any(k in final_url.lower() for k in payment_keywords)
@@ -118,32 +106,24 @@ def predict():
     elif qr_type == "WIFI":
         r = analyze_wifi(data)
         response.update({
-            "prediction": r["prediction"],
-            "risk_level": r["risk_level"],
-            "flags": r["flags"],
-            "ssid": r["ssid"],
-            "security": r["security"],
+            "prediction": r["prediction"], "risk_level": r["risk_level"],
+            "flags": r["flags"], "ssid": r["ssid"], "security": r["security"],
         })
 
     # ── EMAIL ──
     elif qr_type == "EMAIL":
         r = analyze_email(data)
         response.update({
-            "prediction": r["prediction"],
-            "risk_level": r["risk_level"],
-            "flags": r["flags"],
-            "email_to": r["to"],
-            "email_subject": r["subject"],
+            "prediction": r["prediction"], "risk_level": r["risk_level"],
+            "flags": r["flags"], "email_to": r["to"], "email_subject": r["subject"],
         })
 
     # ── TEXT ──
     else:
         r = analyze_text(data)
         response.update({
-            "prediction": r["prediction"],
-            "risk_level": r["risk_level"],
-            "flags": r["flags"],
-            "contains_url": r["contains_url"],
+            "prediction": r["prediction"], "risk_level": r["risk_level"],
+            "flags": r["flags"], "contains_url": r["contains_url"],
             "embedded_url": r["embedded_url"],
         })
 
