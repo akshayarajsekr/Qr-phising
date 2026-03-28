@@ -517,6 +517,106 @@ body {
   margin-top: 2px;
 }
 
+/* ── Tabs ── */
+.scanner-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 0;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 11px;
+  border: none;
+  background: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #94a3b8;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+  font-family: 'Inter', sans-serif;
+}
+
+.tab-btn:hover { color: #334155; }
+
+.tab-btn.active {
+  color: #1e3a8a;
+  border-bottom: 2px solid #1e3a8a;
+  background: #f8fafc;
+}
+
+/* ── Upload section ── */
+.upload-section {
+  padding: 16px 24px 20px;
+}
+
+.upload-dropzone {
+  width: 100%;
+  height: 320px;
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.upload-dropzone:hover {
+  border-color: #1e3a8a;
+  background: #eff6ff;
+}
+
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.upload-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  background: #e2e8f0;
+  border: 2px dashed #94a3b8;
+  margin-bottom: 6px;
+}
+
+.upload-placeholder p {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.upload-placeholder span {
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+.uploaded-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 12px;
+}
+
+.upload-error {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #dc2626;
+  font-size: 0.83rem;
+  font-weight: 500;
+}
+
 /* ── Responsive ── */
 @media (max-width: 860px) {
   .app-header { padding: 0 20px; }
