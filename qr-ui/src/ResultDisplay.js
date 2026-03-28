@@ -174,6 +174,29 @@ const ResultDisplay = ({ result, loading }) => {
         </div>
       )}
 
+      {(result.type === "URL" || (result.type === "TEXT" && result.contains_url)) && (
+        <div className="details-section">
+          <div className="section-label">Open URL</div>
+          {isPhishing ? (
+            <div className="open-url-blocked">
+              This URL has been blocked for your safety. It was flagged as a phishing threat.
+            </div>
+          ) : (
+            <div className="open-url-safe">
+              <span>{isSuspicious ? "Proceed with caution — this URL has some concerns." : "This URL appears safe to visit."}</span>
+              <a
+                href={result.final_url || result.embedded_url || result.data}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`btn-open-url ${isSuspicious ? "caution" : ""}`}
+              >
+                Open URL
+              </a>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="details-section">
         <div className="section-label">Raw QR Data</div>
         <div className="raw-data"><code>{result.data}</code></div>
