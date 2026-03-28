@@ -32,16 +32,24 @@ const ResultDisplay = ({ result, loading }) => {
         <div className="idle-content">
           <div className="idle-icon" />
           <h3>No QR Code Scanned Yet</h3>
-          <p>Start the scanner or upload an image to analyze it for phishing and payment fraud.</p>
+          <p>Start the scanner or upload an image to analyze it for threats.</p>
         </div>
       </div>
     );
   }
 
-  const isPhishing = result.prediction?.includes("Phishing") || result.prediction?.includes("Fraudulent");
-  const isSuspicious = result.prediction?.includes("Suspicious") || result.prediction?.includes("concerns");
-  const isError = result.type === "ERROR";
+  const isPhishing = result.prediction?.includes("Phishing") ||
+                     result.prediction?.includes("Fraudulent") ||
+                     result.prediction?.includes("Suspicious") ||
+                     result.prediction?.includes("Scam") ||
+                     result.prediction?.includes("Do Not");
 
+  const isSuspicious = result.prediction?.includes("concerns") ||
+                       result.prediction?.includes("Verify") ||
+                       result.risk_level === "Medium Risk" ||
+                       result.risk_level === "Low Risk";
+
+  const isError = result.type === "ERROR";
   const verdictClass = isPhishing ? "danger" : isSuspicious ? "warning" : isError ? "error" : "safe";
   const verdictLabel = isPhishing ? "Threat Detected"
     : isSuspicious ? "Caution"
@@ -49,11 +57,11 @@ const ResultDisplay = ({ result, loading }) => {
     : "No Threat Detected";
 
   const cleanPrediction = stripNonAscii(result.prediction);
-  const isUPI = result.type === "UPI";
-  const isURL = result.type === "URL";
 
   return (
     <div className="result-card">
+
+      {/* Verdict */}
       <div className={`verdict-area ${verdictClass}`}>
         <div className="verdict-label">{verdictLabel}</div>
         <div className="verdict-text">{cleanPrediction}</div>
@@ -65,7 +73,7 @@ const ResultDisplay = ({ result, loading }) => {
         </div>
       </div>
 
-      {/* Flags / Warnings */}
+      {/* Risk Flags */}
       {result.flags && result.flags.length > 0 && (
         <div className="details-section">
           <div className="section-label">Risk Indicators</div>
@@ -79,15 +87,15 @@ const ResultDisplay = ({ result, loading }) => {
         </div>
       )}
 
-      {/* UPI Payment Details */}
-      {isUPI && (
+      {/* UPI Details */}
+      {result.type === "UPI" && (
         <div className="details-section">
           <div className="section-label">Payment Details</div>
           <div className="info-grid">
-            <Row label="UPI ID"    value={result.upi_id} />
-            <Row label="Payee"     value={result.payee_name} />
-            <Row label="Amount"    value={result.amount ? `Rs. ${result.amount}` : null} />
-            <Row label="Remarks"   value={result.remarks} />
+            <Row label="UPI ID"   value={result.upi_id} />
+            <Row label="Payee"    value={result.payee_name} />
+            <Row label="Amount"   value={result.amount ? `Rs. ${result.amount}` : null} />
+            <Row label="Remarks"  value={result.remarks} />
           </div>
           {isPhishing || isSuspicious ? (
             <div className="payment-warning">
@@ -101,8 +109,8 @@ const ResultDisplay = ({ result, loading }) => {
         </div>
       )}
 
-      {/* URL Analysis */}
-      {isURL && (result.domain || result.protocol) && (
+      {/* URL Details */}
+      {result.type === "URL" && (result.domain || result.protocol) && (
         <div className="details-section">
           <div className="section-label">URL Analysis</div>
           <div className="info-grid">
@@ -115,6 +123,59 @@ const ResultDisplay = ({ result, loading }) => {
         </div>
       )}
 
+      {/* WIFI Details */}
+      {result.type === "WIFI" && (
+        <div className="details-section">
+          <div className="section-label">Network Details</div>
+          <div className="info-grid">
+            <Row label="Network"   value={result.ssid} />
+            <Row label="Security"  value={result.security} />
+          </div>
+          {isPhishing || isSuspicious ? (
+            <div className="payment-warning">
+              Do not connect to this network. It may be used to intercept your data.
+            </div>
+          ) : (
+            <div className="payment-safe">
+              Verify this is a trusted network before connecting.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* EMAIL Details */}
+      {result.type === "EMAIL" && (
+        <div className="details-section">
+          <div className="section-label">Email Details</div>
+          <div className="info-grid">
+            <Row label="To"       value={result.email_to} />
+            <Row label="Subject"  value={result.email_subject} />
+          </div>
+          {isPhishing || isSuspicious ? (
+            <div className="payment-warning">
+              Do not send this email. It may be a phishing or scam attempt.
+            </div>
+          ) : (
+            <div className="payment-safe">
+              Verify the recipient address before sending.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TEXT Details */}
+      {result.type === "TEXT" && result.contains_url && (
+        <div className="details-section">
+          <div className="section-label">Embedded URL Found</div>
+          <div className="info-grid">
+            <Row label="URL" value={result.embedded_url} />
+          </div>
+          <div className="payment-warning">
+            This text QR contains a URL. Do not visit it without verifying.
+          </div>
+        </div>
+      )}
+
       {/* Raw Data */}
       <div className="details-section">
         <div className="section-label">Raw QR Data</div>
@@ -122,6 +183,7 @@ const ResultDisplay = ({ result, loading }) => {
           <code>{result.data}</code>
         </div>
       </div>
+
     </div>
   );
 };

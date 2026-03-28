@@ -4,6 +4,9 @@ from url_preprocessing import preprocess_url
 from predict_url import predict_url
 from redirect_detector import check_redirect
 from upi_analyzer import analyze_upi
+from wifi_analyzer import analyze_wifi
+from email_analyzer import analyze_email
+from text_analyzer import analyze_text
 
 app = Flask(__name__)
 CORS(app)
@@ -54,18 +57,31 @@ def predict():
         "payee_name": None,
         "amount": None,
         "remarks": None,
+        # WIFI fields
+        "ssid": None,
+        "security": None,
+        # EMAIL fields
+        "email_to": None,
+        "email_subject": None,
+        # TEXT fields
+        "contains_url": False,
+        "embedded_url": None,
     }
 
+    # ── UPI ──
     if qr_type == "UPI":
-        upi_result = analyze_upi(data)
-        response["prediction"] = upi_result["prediction"]
-        response["risk_level"] = upi_result["risk_level"]
-        response["flags"] = upi_result["flags"]
-        response["upi_id"] = upi_result["upi_id"]
-        response["payee_name"] = upi_result["payee_name"]
-        response["amount"] = upi_result["amount"]
-        response["remarks"] = upi_result["remarks"]
+        r = analyze_upi(data)
+        response.update({
+            "prediction": r["prediction"],
+            "risk_level": r["risk_level"],
+            "flags": r["flags"],
+            "upi_id": r["upi_id"],
+            "payee_name": r["payee_name"],
+            "amount": r["amount"],
+            "remarks": r["remarks"],
+        })
 
+    # ── URL ──
     elif qr_type == "URL":
         processed = preprocess_url(data)
         if processed:
@@ -80,7 +96,6 @@ def predict():
         ml_prediction = predict_url(final_url)
         is_phishing = "Phishing" in ml_prediction
 
-        # Extra check — payment-related phishing URLs
         payment_keywords = ["pay", "upi", "gpay", "phonepe", "paytm",
                             "payment", "transaction", "wallet", "bank", "transfer"]
         is_payment_url = any(k in final_url.lower() for k in payment_keywords)
@@ -92,16 +107,45 @@ def predict():
             flags.append(f"Excessive redirects: {redirects} hops detected")
         if is_payment_url and is_phishing:
             flags.append("Payment-related phishing URL — do not enter card or UPI details")
-        if "http://" in final_url and not "https://" in final_url:
+        if "http://" in final_url and "https://" not in final_url:
             flags.append("Insecure connection — no HTTPS")
 
         response["flags"] = flags
         response["prediction"] = ml_prediction
         response["risk_level"] = "High Risk" if is_phishing else "Safe"
 
+    # ── WIFI ──
+    elif qr_type == "WIFI":
+        r = analyze_wifi(data)
+        response.update({
+            "prediction": r["prediction"],
+            "risk_level": r["risk_level"],
+            "flags": r["flags"],
+            "ssid": r["ssid"],
+            "security": r["security"],
+        })
+
+    # ── EMAIL ──
+    elif qr_type == "EMAIL":
+        r = analyze_email(data)
+        response.update({
+            "prediction": r["prediction"],
+            "risk_level": r["risk_level"],
+            "flags": r["flags"],
+            "email_to": r["to"],
+            "email_subject": r["subject"],
+        })
+
+    # ── TEXT ──
     else:
-        response["prediction"] = f"{qr_type} content"
-        response["risk_level"] = "Safe"
+        r = analyze_text(data)
+        response.update({
+            "prediction": r["prediction"],
+            "risk_level": r["risk_level"],
+            "flags": r["flags"],
+            "contains_url": r["contains_url"],
+            "embedded_url": r["embedded_url"],
+        })
 
     return jsonify(response)
 
